@@ -1,0 +1,76 @@
+@phantom.playbook_block()
+def code_1(action=None, success=None, container=None, results=None,
+           handle=None, filtered_artifacts=None,
+           filtered_results=None, custom_function=None,
+           loop_state_json=None, **kwargs):
+
+    phantom.debug("code_1() called")
+
+    ############################################################################
+    ## Extract IP from artifact
+    ############################################################################
+
+    ips = phantom.collect2(
+        container=container,
+        datapath=['artifact:*.cef.sourceAddress'],
+        scope='all'
+    )
+
+    if not ips:
+        phantom.debug("No IP address found")
+        return
+
+    ip = ips[0][0]
+
+    phantom.debug(f"Extracted IP: {ip}")
+
+    ############################################################################
+    ## Simulated enrichment logic
+    ## (Replace with real threat intel action block in production)
+    ############################################################################
+
+    reputation = "malicious"
+    confidence = 85
+
+    phantom.debug(
+        f"Reputation: {reputation}, Confidence: {confidence}"
+    )
+
+    ############################################################################
+    ## Save runtime data for decision block
+    ############################################################################
+
+    phantom.save_run_data(
+        key="ip_reputation",
+        value=reputation
+    )
+
+    phantom.save_run_data(
+        key="confidence_score",
+        value=str(confidence)
+    )
+
+    ############################################################################
+    ## Optional: Add enrichment result as artifact
+    ############################################################################
+
+    phantom.add_artifact(
+        container=container,
+        raw_data={},
+        cef_data={
+            "sourceAddress": ip,
+            "ipReputation": reputation,
+            "confidenceScore": confidence
+        },
+        label="ip_enrichment"
+    )
+
+    phantom.debug("Enrichment artifact added")
+
+    ############################################################################
+    ## Move to decision block
+    ############################################################################
+
+    decision_1(container=container)
+
+    return
