@@ -1,76 +1,134 @@
 @phantom.playbook_block()
-def code_1(action=None, success=None, container=None, results=None,
-           handle=None, filtered_artifacts=None,
-           filtered_results=None, custom_function=None,
-           loop_state_json=None, **kwargs):
+def on_start(container):
+    phantom.debug('on_start() called')
 
-    phantom.debug("code_1() called")
+    # call 'code_1' block
+    code_1(container=container)
+
+    return
 
     ############################################################################
     ## Extract IP from artifact
     ############################################################################
 
+   @phantom.playbook_block()
+def code_1(action=None, success=None, container=None, results=None, handle=None, filtered_artifacts=None, filtered_results=None, custom_function=None, loop_state_json=None, **kwargs):
+    phantom.debug("code_1() called")
+
+    container_artifact_data = phantom.collect2(container=container, datapath=["artifact:*.cef.sourceAddress"])
+
+    container_artifact_cef_item_0 = [item[0] for item in container_artifact_data]
+
+    input_parameter_0 = "fail count"
+    input_parameter_1 = ""
+
+    ################################################################################
+    ## Custom Code Start
+    ################################################################################
+    # Extract IP
     ips = phantom.collect2(
         container=container,
-        datapath=['artifact:*.cef.sourceAddress'],
-        scope='all'
+        datapath=['artifact:*.cef.sourceAddress']
     )
 
-    if not ips:
-        phantom.debug("No IP address found")
+    # Extract fail count (using baseEventCount)
+    fails = phantom.collect2(
+        container=container,
+        datapath=['artifact:*.cef.baseEventCount']
+    )
+
+    if not ips or not fails:
+        phantom.debug("Missing data")
         return
 
     ip = ips[0][0]
+    fail_count = int(fails[0][0])
 
-    phantom.debug(f"Extracted IP: {ip}")
+    phantom.debug(f"IP: {ip}, Fail count: {fail_count}")
 
-    ############################################################################
-    ## Simulated enrichment logic
-    ## (Replace with real threat intel action block in production)
-    ############################################################################
+    # Save for decision
+    phantom.save_run_data(key="fail_count", value=str(fail_count))
 
-    reputation = "malicious"
-    confidence = 85
+    ################################################################################
+    ## Custom Code End
+    ################################################################################
 
-    phantom.debug(
-        f"Reputation: {reputation}, Confidence: {confidence}"
-    )
+    phantom.save_block_result(key="code_1__inputs:0:artifact:*.cef.sourceAddress", value=json.dumps(container_artifact_cef_item_0))
+    phantom.save_block_result(key="code_1__inputs:1:fail count", value=json.dumps("fail count"))
 
-    ############################################################################
-    ## Save runtime data for decision block
-    ############################################################################
+    phantom.save_block_result(key="code_1_called", value="True")
 
-    phantom.save_run_data(
-        key="ip_reputation",
-        value=reputation
-    )
+    decision_1(container=container)
 
-    phantom.save_run_data(
-        key="confidence_score",
-        value=str(confidence)
-    )
+    return
 
     ############################################################################
-    ## Optional: Add enrichment result as artifact
+    Decision block
     ############################################################################
 
-    phantom.add_artifact(
+    @phantom.playbook_block()
+def decision_1(action=None, success=None, container=None, results=None, handle=None, filtered_artifacts=None, filtered_results=None, custom_function=None, loop_state_json=None, **kwargs):
+    phantom.debug("decision_1() called")
+
+    # check for 'if' condition 1
+    found_match_1 = phantom.decision(
         container=container,
-        raw_data={},
-        cef_data={
-            "sourceAddress": ip,
-            "ipReputation": reputation,
-            "confidenceScore": confidence
-        },
-        label="ip_enrichment"
-    )
+        conditions=[
+            ["fail_count", ">", "10"]
+        ],
+        conditions_dps=[
+            ["fail_count", ">", "10"]
+        ],
+        name="decision_1:condition_1",
+        delimiter=None)
 
-    phantom.debug("Enrichment artifact added")
+    # call connected blocks if condition 1 matched
+    if found_match_1:
+        code_2(action=action, success=success, container=container, results=results, handle=handle)
+        code_3(action=action, success=success, container=container, results=results, handle=handle)
+        return
+
+    return
 
     ############################################################################
     ## Move to decision block
     ############################################################################
 
-    decision_1(container=container)
+   @phantom.playbook_block()
+def code_3(action=None, success=None, container=None, results=None, handle=None, filtered_artifacts=None, filtered_results=None, custom_function=None, loop_state_json=None, **kwargs):
+    phantom.debug("code_3() called")
+
+    ################################################################################
+    ## Custom Code Start
+    ################################################################################
+
+    phantom.set_severity(container=container, severity="low")
+    phantom.debug("Normal activity")
+
+    @phantom.playbook_block()
+def code_2(action=None, success=None, container=None, results=None, handle=None, filtered_artifacts=None, filtered_results=None, custom_function=None, loop_state_json=None, **kwargs):
+    phantom.debug("code_2() called")
+
+    ################################################################################
+    ## Custom Code Start
+    ################################################################################
+
+    phantom.set_severity(container=container, severity="high")
+    phantom.debug("Brute force detected")
+
+    ################################################################################
+    ## Custom Code End
+    ################################################################################
+
+    phantom.save_block_result(key="code_2_called", value="True")
 
     return
+
+    ################################################################################
+    ## Custom Code End
+    ################################################################################
+
+    phantom.save_block_result(key="code_3_called", value="True")
+
+    return
+
